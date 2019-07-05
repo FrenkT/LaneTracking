@@ -4,7 +4,10 @@ import cv2
 
 import track
 import detect
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--path", type=str, help="Video path")
 
 def main(video_path):
     cap = cv2.VideoCapture(video_path)
@@ -33,3 +36,7 @@ def main(video_path):
         cv2.imshow('', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    main(args.path)

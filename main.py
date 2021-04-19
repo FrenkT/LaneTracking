@@ -1,13 +1,15 @@
-from __future__ import division
-
 import cv2
 
 import track
 import detect
 import argparse
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--path", type=str, help="Video path")
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--path", required=True, type=str, help="Video path")
+    return parser.parse_args()
+
 
 def main(video_path):
     cap = cv2.VideoCapture(video_path)
@@ -21,22 +23,32 @@ def main(video_path):
         ticks = cv2.getTickCount()
         dt = (ticks - precTick) / cv2.getTickFrequency()
 
-        ret, frame = cap.read()
+        _, frame = cap.read()
+        if frame is None:
+            break
 
         predicted = lt.predict(dt)
 
         lanes = ld.detect(frame)
 
         if predicted is not None:
-            cv2.line(frame, (predicted[0][0], predicted[0][1]), (predicted[0][2], predicted[0][3]), (0, 0, 255), 5)
-            cv2.line(frame, (predicted[1][0], predicted[1][1]), (predicted[1][2], predicted[1][3]), (0, 0, 255), 5)
+            cv2.line(frame,
+                     (predicted[0][0], predicted[0][1]),
+                     (predicted[0][2], predicted[0][3]),
+                     (0, 0, 255), 5)
+            cv2.line(frame,
+                     (predicted[1][0], predicted[1][1]),
+                     (predicted[1][2], predicted[1][3]),
+                     (0, 0, 255), 5)
 
-        lt.update(lanes)
+        if lanes is not None:
+            lt.update(lanes)
 
         cv2.imshow('', frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+
 if __name__ == "__main__":
-    args = parser.parse_args()
+    args = parse_args()
     main(args.path)

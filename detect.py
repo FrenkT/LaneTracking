@@ -11,8 +11,10 @@ class LaneDetector:
         self.roi_theta = 0.3
         self.road_horizon = road_horizon
 
-    def _standard_hough(self, img, init_vote):
-        # Hough transform wrapper to return a list of points like PHough does
+    @staticmethod
+    def _standard_hough(img, init_vote):
+        """Hough transform wrapper to return a list of points like PHough does
+        """
         lines = cv2.HoughLines(img, 1, np.pi/180, init_vote)
         points = [[]]
         for l in lines:
@@ -28,9 +30,11 @@ class LaneDetector:
                 points[0].append((x1, y1, x2, y2))
         return points
 
-    def _base_distance(self, x1, y1, x2, y2, width):
-        # compute the point where the give line crosses the base of the frame
-        # return distance of that point from center of the frame
+    @staticmethod
+    def _base_distance(x1, y1, x2, y2, width):
+        """Compute the point where the give line crosses the base of the frame
+        and return distance of that point from center of the frame
+        """
         if x2 == x1:
             return (width*0.5) - x1
         m = (y2-y1)/(x2-x1)
@@ -39,7 +43,9 @@ class LaneDetector:
         return (width*0.5) - base_cross
 
     def _scale_line(self, x1, y1, x2, y2, frame_height):
-        # scale the farthest point of the segment to be on the drawing horizon
+        """Scale the farthest point of the segment to be on the drawing horizon
+        """
+        #
         if x1 == x2:
             if y1 < y2:
                 y1 = self.road_horizon
@@ -73,21 +79,26 @@ class LaneDetector:
         contours = cv2.Canny(blur, 60, 120)
 
         if self.prob_hough:
-            lines = cv2.HoughLinesP(contours, 1, np.pi/180, self.vote, minLineLength=30, maxLineGap=100)
+            lines = cv2.HoughLinesP(contours, 1, np.pi/180, self.vote,
+                                    minLineLength=30, maxLineGap=100)
         else:
-            lines = self.standard_hough(contours, self.vote)
+            lines = self._standard_hough(contours, self.vote)
 
         if lines is not None:
             # find nearest lines to center
-            lines = lines+np.array([0, self.road_horizon, 0, self.road_horizon]).reshape((1, 1, 4))  # scale points from ROI coordinates to full frame coordinates
+            # scale points from ROI coordinates to full frame coordinates
+            lines = lines+np.array([0, self.road_horizon,
+                                    0, self.road_horizon]).reshape((1, 1, 4))
             left_bound = None
             right_bound = None
             for l in lines:
-                # find the rightmost line of the left half of the frame and the leftmost line of the right half
+                # find the rightmost/leftmost line of the left/right half
                 for x1, y1, x2, y2 in l:
-                    theta = np.abs(np.arctan2((y2-y1), (x2-x1)))  # line angle WRT horizon
-                    if theta > self.roi_theta:  # ignore lines with a small angle WRT horizon
-                        dist = self._base_distance(x1, y1, x2, y2, frame.shape[1])
+                    # line angle WRT horizon
+                    theta = np.abs(np.arctan2((y2-y1), (x2-x1)))
+                    if theta > self.roi_theta:  # ignore lines with small angle
+                        dist = self._base_distance(x1, y1, x2, y2,
+                                                   frame.shape[1])
                         if left_bound is None and dist < 0:
                             left_bound = (x1, y1, x2, y2)
                             left_dist = dist
@@ -101,9 +112,12 @@ class LaneDetector:
                             right_bound = (x1, y1, x2, y2)
                             right_dist = dist
             if left_bound is not None:
-                left_bound = self._scale_line(left_bound[0], left_bound[1], left_bound[2], left_bound[3], frame.shape[0])
+                left_bound = self._scale_line(left_bound[0], left_bound[1],
+                                              left_bound[2], left_bound[3],
+                                              frame.shape[0])
             if right_bound is not None:
-                right_bound = self._scale_line(right_bound[0], right_bound[1], right_bound[2], right_bound[3], frame.shape[0])
+                right_bound = self._scale_line(right_bound[0], right_bound[1],
+                                               right_bound[2], right_bound[3],
+                                               frame.shape[0])
 
             return [left_bound, right_bound]
-
